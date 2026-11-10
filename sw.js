@@ -1,6 +1,6 @@
 // Transline · Portal: guarda las pantallas para que abran rápido.
 // Los datos siempre se piden en línea a los motores de Apps Script.
-const VERSION = 'tl-portal-v1';
+const VERSION = 'tl-portal-v2';
 const ARCHIVOS = ['./', './index.html', './config.js', './manifest.webmanifest', './icon-192.png', './icon-512.png',
   './apple-touch-icon.png', './devoluciones/', './devoluciones/index.html'];
 
