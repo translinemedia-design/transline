@@ -2,6 +2,7 @@
 // Pega entre las comillas las direcciones /exec de cada motor de Apps Script.
 window.TL_CONFIG = {
   PORTAL_API_URL: 'https://script.google.com/macros/s/AKfycbwuLyrkxdUgTstVkYNy2iBlWXfWjJ0ZifNyNffmtd385IvHteWr0JZ2-vBNE4Dy-OI/exec',
+  DESPACHOS_API_URL: 'https://script.google.com/macros/s/AKfycbz26rz26lsg-ZaNUKprgRDUhRoRC_G7LJX4opXXdei95bm2faT285AUhXXu84lxiKP5/exec',
   DEVOLUCIONES_API_URL: 'https://script.google.com/macros/s/AKfycbyUCU0mRj_cLrhrSQ_87AfXIFeyOLzuw6NbTUX-zfnyQ27iCAwg-pdXmIUOY6bYKmb3/exec',
 
   // Accesos directos (no hace falta cambiarlos)

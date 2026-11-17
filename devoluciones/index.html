@@ -132,6 +132,9 @@ nav.tabs button{font-size:12px}
 .label .qr small{font-size:2.5mm;line-height:1.1;text-align:center}
 .label .der{display:flex;flex-direction:column;min-width:0}
 .label .logo{height:5.5mm;width:auto;align-self:flex-start;margin-bottom:1.5mm}
+.label .cab-et{display:flex;align-items:center;gap:2mm;margin-bottom:1.5mm}
+.label .cab-et .logo{margin-bottom:0}
+.label .tipo-et{border:.45mm solid #000;font-weight:700;font-size:2.7mm;letter-spacing:.25mm;padding:.4mm 1.3mm;border-radius:.6mm;white-space:nowrap;line-height:1.2}
 .label .gar{font-size:9.5mm;font-weight:700;line-height:1;letter-spacing:.2mm}
 .label .bulto{margin-top:1.6mm;font-size:5.6mm;font-weight:700;line-height:1.1;border:.5mm solid #000;border-radius:1.2mm;padding:.6mm 2mm;align-self:flex-start}
 .label .txt{font-size:3.2mm;line-height:1.25;margin-top:1.4mm;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -1241,7 +1244,7 @@ function etiquetaHTML(c, n, total, qr) {
   return '<div class="label">' +
     '<div class="qr"><img alt="Código QR del caso" src="' + qr + '"><small>Escanea para ver el caso</small></div>' +
     '<div class="der">' +
-      '<img class="logo" alt="Transline" src="' + LOGO_BN + '">' +
+      '<div class="cab-et"><img class="logo" alt="Transline" src="' + LOGO_BN + '"><span class="tipo-et">DEVOLUCIÓN</span></div>' +
       '<div class="gar">' + esc(c.id) + '</div>' +
       '<div class="bulto">Bulto ' + n + ' de ' + total + '</div>' +
       '<div class="txt">' + esc(c.cliente) + '</div>' +
