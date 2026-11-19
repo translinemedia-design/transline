@@ -108,34 +108,37 @@ function icono(n) { return '<svg viewBox="0 0 24 24" fill="none" stroke="current
 
 /* Roles por módulo (vienen de Datos maestros > Usuarios) */
 const rol = (m) => (SESION && SESION.modulos && SESION.modulos[m]) || '';
-const esAdmin = () => SESION && Object.values(SESION.modulos || {}).indexOf('Administrador') >= 0;
-const dev = (...roles) => roles.indexOf(rol('devoluciones')) >= 0;
-const desp = (...roles) => roles.indexOf(rol('despachos')) >= 0;
+const rolesDe = (m) => rol(m).split(',').map((x) => x.trim()).filter(String);
+const dev = (...roles) => rolesDe('devoluciones').some((r) => roles.indexOf(r) >= 0);
+const desp = (...roles) => rolesDe('despachos').some((r) => roles.indexOf(r) >= 0);
+/* Tarjetas por persona (Datos maestros > Accesos). Si el motor aún no las envía, se usan los roles. */
+const acceso = (k, porRol) => (SESION && Array.isArray(SESION.tarjetas)) ? SESION.tarjetas.indexOf(k) >= 0 : !!porRol();
+const esAdmin = () => acceso('gerencia', () => Object.values(SESION.modulos || {}).some((v) => String(v).indexOf('Administrador') >= 0));
 const plural = (n, uno, varios) => n + ' ' + (n === 1 ? uno : varios);
 const partes = (l) => l.filter((p) => p[0] > 0).map((p) => plural(p[0], p[1], p[2])).join(' · ');
 
 /* Mapa del ERP: áreas y módulos */
 const AREAS = [
   { nombre: 'Comercial', modulos: [
-    { t: 'Despachos', d: 'Órdenes de despacho y envío por WhatsApp', ic: 'camion', href: () => CFG.DESPACHOS_URL, ver: () => desp('Vendedor', 'Administrador') },
+    { t: 'Despachos', d: 'Órdenes de despacho y envío por WhatsApp', ic: 'camion', href: () => CFG.DESPACHOS_URL, ver: () => acceso('despachos', () => desp('Vendedor', 'Administrador')) },
     { t: 'Cotizaciones', d: 'Proformas para clientes', ic: 'doc', prox: true },
     { t: 'Leads de WhatsApp', d: 'Registro y seguimiento de leads', ic: 'chat', prox: true }
   ] },
   { nombre: 'Compras', modulos: [
-    { t: 'Evaluación de proveedores', d: 'Ranking, precios y plan de compra', ic: 'carrito', href: () => CFG.COMPRAS_URL, ver: () => !!rol('compras'), externo: true },
+    { t: 'Evaluación de proveedores', d: 'Ranking, precios y plan de compra', ic: 'carrito', href: () => CFG.COMPRAS_URL, ver: () => acceso('compras', () => !!rol('compras')), externo: true },
     { t: 'Órdenes de compra', d: 'Solicitudes, órdenes y recepción', ic: 'doc', prox: true }
   ] },
   { nombre: 'Logística', modulos: [
-    { t: 'Alistar pedidos', d: 'Pedidos por alistar, etiquetas y salida', ic: 'alistar', color: 'azul', href: () => CFG.DESPACHOS_URL + 'almacen.html', ver: () => desp('Almacén', 'Administrador'), contador: 'alistar',
+    { t: 'Alistar pedidos', d: 'Pedidos por alistar, etiquetas y salida', ic: 'alistar', color: 'azul', href: () => CFG.DESPACHOS_URL + 'almacen.html', ver: () => acceso('alistar', () => desp('Almacén', 'Administrador')), contador: 'alistar',
       dd: () => partes([[CONTADORES.porAlistar || 0, 'por alistar', 'por alistar'], [CONTADORES.alistados || 0, 'por embalar', 'por embalar'], [CONTADORES.despImprimir || 0, 'etiqueta por imprimir', 'etiquetas por imprimir']]) },
-    { t: 'Recibir devoluciones', d: 'Equipos que llegan y sus etiquetas', ic: 'caja', color: 'naranja', href: () => 'devoluciones/?vista=porrecibir', ver: () => dev('Almacén', 'Administrador'), contador: 'devoluciones',
+    { t: 'Recibir devoluciones', d: 'Equipos que llegan y sus etiquetas', ic: 'caja', color: 'naranja', href: () => 'devoluciones/?vista=porrecibir', ver: () => acceso('recibir', () => dev('Almacén', 'Administrador')), contador: 'devoluciones',
       dd: () => partes([[CONTADORES.porRecibir || 0, 'por recibir', 'por recibir'], [CONTADORES.porImprimir || 0, 'etiqueta por imprimir', 'etiquetas por imprimir']]) },
     { t: 'Inventario', d: 'Entradas, salidas y stock', ic: 'estante', prox: true }
   ] },
   { nombre: 'Postventa', modulos: [
-    { t: 'Devoluciones y garantías', d: 'Registrar avisos y devoluciones', ic: 'retorno', href: () => 'devoluciones/?vista=registrar', ver: () => dev('Vendedor', 'Almacén', 'Administrador') },
-    { t: 'Servicio técnico', d: 'Casos por revisar y diagnóstico', ic: 'llave', href: () => 'devoluciones/?vista=revision', ver: () => dev('Servicio técnico', 'Administrador'), contador: 'porRevisar' },
-    { t: 'Buscar caso', d: 'Consultar y compartir seguimiento', ic: 'lupa', href: () => 'devoluciones/?vista=buscar', ver: () => !!rol('devoluciones') }
+    { t: 'Devoluciones y garantías', d: 'Registrar avisos y devoluciones', ic: 'retorno', href: () => 'devoluciones/?vista=registrar', ver: () => acceso('devoluciones', () => dev('Vendedor', 'Almacén', 'Administrador')) },
+    { t: 'Servicio técnico', d: 'Casos por revisar y diagnóstico', ic: 'llave', href: () => 'devoluciones/?vista=revision', ver: () => acceso('tecnico', () => dev('Servicio técnico', 'Administrador')), contador: 'porRevisar' },
+    { t: 'Buscar caso', d: 'Consultar y compartir seguimiento', ic: 'lupa', href: () => 'devoluciones/?vista=buscar', ver: () => acceso('buscar', () => !!rol('devoluciones')) }
   ] },
   { nombre: 'Gerencia', modulos: [
     { t: 'Garantías por modelo', d: 'Ficha y resumen de fallas', ic: 'grafico', href: () => CFG.GARANTIAS_HOJA_URL, ver: () => esAdmin(), externo: true },
@@ -171,7 +174,7 @@ async function entrar() {
   SESION = { pin: pin };
   try {
     const u = await api(CFG.PORTAL_API_URL, 'login');
-    SESION = { pin: pin, nombre: u.nombre, area: u.area, modulos: u.modulos };
+    SESION = { pin: pin, nombre: u.nombre, area: u.area, modulos: u.modulos, tarjetas: u.tarjetas || null };
     try { localStorage.setItem('tl_portal', JSON.stringify(SESION)); } catch (e) {}
     mensaje('', ''); mostrarInicio();
   } catch (err) {
@@ -215,15 +218,15 @@ async function cargarContadores() {
   const tareas = [];
   const url = CFG.DEVOLUCIONES_API_URL;
   if (rol('devoluciones')) {
-    if (dev('Almacén', 'Administrador')) {
+    if (acceso('recibir', () => dev('Almacén', 'Administrador'))) {
       tareas.push(api(url, 'porRecibir').then((l) => { CONTADORES.porRecibir = l.length; }).catch(() => {}));
       tareas.push(api(url, 'etiquetasPendientes').then((l) => { CONTADORES.porImprimir = l.length; }).catch(() => {}));
     }
-    if (dev('Servicio técnico', 'Administrador')) {
+    if (acceso('tecnico', () => dev('Servicio técnico', 'Administrador'))) {
       tareas.push(api(url, 'porRevisar').then((l) => { CONTADORES.porRevisar = l.filter((c) => c.estado !== 'En revisión').length; }).catch(() => {}));
     }
   }
-  if (desp('Almacén', 'Administrador') && urlValida(CFG.DESPACHOS_API_URL)) {
+  if (acceso('alistar', () => desp('Almacén', 'Administrador')) && urlValida(CFG.DESPACHOS_API_URL)) {
     tareas.push(fetch(CFG.DESPACHOS_API_URL + '?action=contadores&pin=' + encodeURIComponent(SESION.pin)).then((r) => r.json()).then((j) => {
       if (!j.ok) return;
       CONTADORES.porAlistar = j.data.porAlistar; CONTADORES.alistados = j.data.alistados; CONTADORES.despImprimir = j.data.porImprimir;
@@ -256,7 +259,7 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden && SE
   // Revalida el PIN en segundo plano (por si cambió el rol o se desactivó el usuario)
   try {
     const u = await api(CFG.PORTAL_API_URL, 'login');
-    SESION = Object.assign(SESION, { nombre: u.nombre, area: u.area, modulos: u.modulos });
+    SESION = Object.assign(SESION, { nombre: u.nombre, area: u.area, modulos: u.modulos, tarjetas: u.tarjetas || null });
     localStorage.setItem('tl_portal', JSON.stringify(SESION));
     mostrarInicio();
   } catch (err) { if (err.message === 'pin') { salir(); mensaje('error', 'Tu PIN ya no es válido. Ingresa de nuevo.'); } }

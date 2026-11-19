@@ -430,14 +430,18 @@ async function run(fn, ...args) {
 }
 
 /* ---------- sesión y roles ---------- */
+/* Una persona puede tener varios roles (p. ej. Servicio técnico y Almacén), según sus tarjetas en el portal. */
+function rolesSesion() { return SESION ? (SESION.roles || String(SESION.rol || '').split(',').map((x) => x.trim()).filter(String)) : []; }
+function tiene(r) { return rolesSesion().indexOf(r) >= 0; }
+function soloVendedor() { return tiene(ROLES.VENDEDOR) && !tiene(ROLES.ALMACEN) && !tiene(ROLES.ADMIN); }
+function almacenSinAdmin() { return tiene(ROLES.ALMACEN) && !tiene(ROLES.ADMIN); }
 function puede(accion) {
-  const r = SESION ? SESION.rol : '';
   const A = ROLES.ADMIN;
   const mapa = {
     registrar: [ROLES.VENDEDOR, ROLES.ALMACEN, A], almacen: [ROLES.ALMACEN, A],
     revision: [ROLES.TECNICO, A], tecnico: [ROLES.TECNICO, A], buscar: [ROLES.VENDEDOR, ROLES.ALMACEN, ROLES.TECNICO, A]
   };
-  return (mapa[accion] || []).indexOf(r) >= 0;
+  return (mapa[accion] || []).some(tiene);
 }
 function cerrarSesion(texto) {
   try { localStorage.removeItem('tl_portal'); } catch (e) {}
@@ -459,7 +463,7 @@ async function entrar() {
   SESION = { pin: pin };
   try {
     const u = await run('login');
-    SESION = { pin: pin, nombre: u.nombre, rol: u.rol };
+    SESION = { pin: pin, nombre: u.nombre, rol: u.rol, roles: u.roles };
     try { localStorage.setItem('tl_sesion', JSON.stringify(SESION)); } catch (e) {}
     mensaje('', '');
     await arrancar();
@@ -476,7 +480,7 @@ function aplicarRol() {
   const vis = { registrar: puede('registrar'), revision: puede('revision'), porrecibir: puede('almacen'), pendientes: puede('almacen'), buscar: true };
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('oculto', !vis[b.dataset.tab]));
 }
-function modosPermitidos() { return SESION && SESION.rol === ROLES.VENDEDOR ? [MODOS[0]] : MODOS; }
+function modosPermitidos() { return soloVendedor() ? [MODOS[0]] : MODOS; }
 
 // Listas de muestra para la vista previa fuera de Google (en la app real se leen de la hoja «Listas»)
 const LISTAS_MUESTRA = {
@@ -555,7 +559,7 @@ function opciones(sel, lista, vacio) {
 /** Almacén: «Recibido por» es la persona que ingresó con su PIN. Administrador: elige de la lista. */
 function fijarRecibidoPor(sel) {
   const lista = (LISTAS.recibidores || []).slice();
-  const esAlmacen = SESION && SESION.rol === ROLES.ALMACEN;
+  const esAlmacen = almacenSinAdmin();
   if (esAlmacen && lista.indexOf(SESION.nombre) < 0) lista.push(SESION.nombre);
   opciones(sel, lista, 'Elige quién recibe');
   if (esAlmacen) sel.value = SESION.nombre;
@@ -583,7 +587,7 @@ function prepararFormulario() {
   aplicarModo();
   refrescarPendientes().then(pintarDuplicados);
   opciones(f.vendedor, LISTAS.vendedores, 'Elige el vendedor');
-  const esVendedor = SESION && SESION.rol === ROLES.VENDEDOR;
+  const esVendedor = soloVendedor();
   if (esVendedor && LISTAS.vendedores.indexOf(SESION.nombre) < 0) f.vendedor.insertAdjacentHTML('beforeend', '<option>' + esc(SESION.nombre) + '</option>');
   if (esVendedor) f.vendedor.value = SESION.nombre;
   f.vendedor.closest('label').classList.toggle('oculto', !!esVendedor);
@@ -1164,7 +1168,7 @@ function pintarCaso(c) {
   $('#c-datos').innerHTML = filas.filter((f) => f[1]).map((f) => '<dt>' + esc(f[0]) + '</dt><dd' + (f[0] === 'Accesorios faltantes' ? ' class="alerta-txt"' : '') + '>' + esc(f[1]) + '</dd>').join('') +
     (c.conjunta ? '<dt>Misma devolución</dt><dd>' + c.conjunta.split(',').map((x) => x.trim()).filter(String).map((x) =>
       '<button type="button" class="link-caso" data-id="' + esc(x) + '">' + esc(x) + '</button>').join('') + '</dd>' : '');
-  const estadosRol = SESION && SESION.rol === ROLES.TECNICO ? ['En revisión', 'Resuelto', 'Rechazado'] : LISTAS.estados;
+  const estadosRol = !tiene(ROLES.ADMIN) ? ['En revisión', 'Resuelto', 'Rechazado'] : LISTAS.estados;
   llenarChips('estado', estadosRol, c.estado);
   $('#c-diagnostico').value = c.diagnostico || '';
   opciones($('#c-solucion'), LISTAS.soluciones || [], 'Sin solución todavía');
@@ -1369,8 +1373,8 @@ function restaurarBorrador(b) {
   });
   $('#reemplazo').classList.toggle('oculto', valorChips('cambioAnticipado') !== 'Sí');
   aplicarModo(); actualizarEnvio(); pintarDescTipo();
-  if (SESION.rol === ROLES.VENDEDOR) f.vendedor.value = SESION.nombre;
-  if (SESION.rol === ROLES.ALMACEN) f.recibidoPor.value = SESION.nombre;
+  if (soloVendedor()) f.vendedor.value = SESION.nombre;
+  if (almacenSinAdmin()) f.recibidoPor.value = SESION.nombre;
 }
 function ofrecerBorrador() {
   const b = leerBorrador();
@@ -1460,7 +1464,7 @@ async function arrancar() {
     $('#v-login').innerHTML = '<div class="bloque login"><h2>Sin acceso</h2><p>Tu usuario no tiene un rol en Devoluciones. Pídelo a la administración.</p><a class="btn" href="../">Volver al inicio</a></div>';
     return;
   }
-  SESION = { pin: portal.pin, nombre: portal.nombre, rol: rolDev };
+  SESION = { pin: portal.pin, nombre: portal.nombre, rol: rolDev, roles: String(rolDev).split(',').map((x) => x.trim()).filter(String) };
   arrancar();
 })();
 </script>
