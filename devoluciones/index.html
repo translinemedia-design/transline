@@ -149,6 +149,25 @@ nav.tabs button{font-size:12px}
   #print-area .label{break-after:page;page-break-after:always}
   #print-area .label:last-child{break-after:auto;page-break-after:auto}
 }
+/* OCA y OC: pendientes de registro y orden de cambio */
+.oca{background:#fff;border-radius:12px;padding:14px;margin-bottom:10px;border-left:6px solid #7C3AED}
+.oca.vencida{border-left-color:#C0392B;background:#FFF5F5}
+.oca .cod{font-weight:700;font-size:17px}
+.oca .meta{font-size:13px;color:var(--suave);margin-top:2px}
+.oca .dev{font-size:15px;margin-top:6px}
+.oca .alerta-txt{display:block;margin-top:6px}
+.oca .btns{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.oca .btns button{min-height:44px;padding:0 14px;border-radius:10px;font:inherit;font-weight:600;border:1.5px solid #7C3AED;background:#7C3AED;color:#fff;cursor:pointer}
+.oca .btns button.sec{background:#fff;color:#7C3AED}
+.vmodal-fondo{position:fixed;inset:0;z-index:90;background:rgba(10,20,35,.55);display:flex;align-items:center;justify-content:center;padding:16px}
+.vmodal{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:440px}
+.vmodal h2{margin:0 0 8px;font-size:19px}
+.vmodal p{margin:0 0 12px;color:var(--suave);font-size:15px}
+.vmodal label{display:block;font-size:13px;font-weight:600;color:var(--suave);margin:8px 0 4px}
+.vmodal select,.vmodal input,.vmodal textarea{width:100%;min-height:46px;font:inherit;font-size:16px;border:1.5px solid var(--linea);border-radius:10px;padding:8px 10px;background:#fff}
+.vmodal .bb{display:flex;gap:10px;margin-top:16px}
+.vmodal .bb button{flex:1;min-height:52px;border-radius:12px;font:inherit;font-weight:700;font-size:16px;cursor:pointer;border:2px solid var(--linea);background:#fff}
+.vmodal .bb .si{background:#1FA855;border-color:#1FA855;color:#fff}
 </style>
 </head>
 <body>
@@ -373,6 +392,11 @@ nav.tabs button{font-size:12px}
         <button class="btn sec" type="button" id="i-volver">Volver a «Por imprimir»</button>
       </div>
     </section>
+    <!-- PENDIENTES DE REGISTRO (OCA) -->
+    <section id="v-pendreg" class="oculto">
+      <div class="aviso info">Cambios anticipados (OCA): el reemplazo ya salió y falta que llegue el equipo con falla del cliente. Cuando llegue, toca <b>Registrar cambio</b>: el formulario viene lleno y queda enlazado a la OCA. En rojo, los que pasaron de 15 días.</div>
+      <div id="lista-pendreg"></div>
+    </section>
   </main>
 
   <nav class="tabs" aria-label="Secciones">
@@ -384,6 +408,8 @@ nav.tabs button{font-size:12px}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7"/><path d="M12 11v10"/></svg><span>Por recibir<span id="badge-r" class="badge oculto"></span></span></button>
     <button type="button" data-tab="pendientes">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/></svg><span>Por imprimir<span id="badge" class="badge oculto"></span></span></button>
+    <button type="button" data-tab="pendreg" class="oculto">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg><span>Cambios<span id="badge-oca" class="badge oculto"></span></span></button>
     <button type="button" data-tab="buscar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Buscar</button>
   </nav>
@@ -477,7 +503,7 @@ function aplicarRol() {
   $('#usuario').classList.remove('oculto');
   const nav = document.querySelector('nav.tabs');
   nav.classList.remove('oculto');
-  const vis = { registrar: puede('registrar'), revision: puede('revision'), porrecibir: puede('almacen'), pendientes: puede('almacen'), buscar: true };
+  const vis = { registrar: puede('registrar'), revision: puede('revision'), porrecibir: puede('almacen'), pendientes: puede('almacen'), buscar: true, pendreg: puede('almacen') && !!DESP_API };
   nav.querySelectorAll('button').forEach((b) => b.classList.toggle('oculto', !vis[b.dataset.tab]));
 }
 function modosPermitidos() { return soloVendedor() ? [MODOS[0]] : MODOS; }
@@ -504,11 +530,11 @@ function mensaje(tipo, texto) {
 }
 
 function mostrar(vista, titulo) {
-  ['login', 'revision', 'registrar', 'exito', 'porrecibir', 'recibir', 'pendientes', 'buscar', 'caso', 'imprimir'].forEach((v) => {
+  ['login', 'revision', 'registrar', 'exito', 'porrecibir', 'recibir', 'pendientes', 'buscar', 'caso', 'imprimir', 'pendreg'].forEach((v) => {
     $('#v-' + v).classList.toggle('oculto', v !== vista);
   });
   $('#titulo').textContent = titulo;
-  const tab = { revision: 'revision', registrar: 'registrar', exito: 'registrar', porrecibir: 'porrecibir', recibir: 'porrecibir', pendientes: 'pendientes', imprimir: 'pendientes', buscar: 'buscar', caso: 'buscar' }[vista];
+  const tab = { revision: 'revision', registrar: 'registrar', exito: 'registrar', porrecibir: 'porrecibir', recibir: 'porrecibir', pendientes: 'pendientes', imprimir: 'pendientes', buscar: 'buscar', caso: 'buscar', pendreg: 'pendreg' }[vista];
   document.querySelectorAll('nav.tabs button').forEach((b) => {
     if (b.dataset.tab === tab) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   });
@@ -811,6 +837,11 @@ $('#form').addEventListener('submit', async (e) => {
     const res = await run('crearDevolucion', d);
     borrarBorrador();
     const creados = res.casos;
+    if (ocaEnCurso && creados.length) {
+      try { await despachosApi({ action: 'vincularOCA', codigo: ocaEnCurso, caso: creados[0].id }); mensaje('ok', 'Enlazado con ' + ocaEnCurso + '.'); }
+      catch (err) { mensaje('error', 'El caso se registró, pero no se pudo enlazar con ' + ocaEnCurso + '. Avísale a administración.'); }
+      ocaEnCurso = '';
+    }
     ultimoMensaje = res.mensaje;
     ultimoRegistrado = creados.map((c) => ({ id: c.id, cliente: d.cliente, modelo: c.modelo, bultos: c.bultos, fecha: hoyTexto() }));
     const totalEtiquetas = creados.reduce((s, c) => s + c.bultos, 0);
@@ -958,6 +989,7 @@ async function cargarPendientes() {
   } catch (err) { $('#lista-pendientes').innerHTML = '<li class="vacio">No se pudo cargar la lista.</li>'; }
 }
 async function cargarBadge() {
+  if (puede('almacen') && DESP_API) cargarOCA(true);
   if (!SESION) return;
   if (puede('almacen')) {
     try { pintarBadge((await run('etiquetasPendientes')).length); } catch (e) {}
@@ -1162,6 +1194,9 @@ function pintarCaso(c) {
   if (c.fechaRecepcion) filas.push(['Fecha de recepción', c.fechaRecepcion]);
   if (c.agencia) filas.push(['Agencia', c.agencia + (c.guiaAgencia ? ' · guía ' + c.guiaAgencia : '')]);
   if (c.llegadaDesde) filas.push(['Llegada estimada', c.llegadaDesde === c.llegadaHasta ? c.llegadaDesde : c.llegadaDesde + ' al ' + c.llegadaHasta]);
+  if (c.cambioAnticipado !== 'Sí' && /^OC-/.test(String(c.guiaReemplazo || ''))) {
+    filas.unshift(['Equipo enviado al cliente', c.guiaReemplazo + (c.fechaReemplazo ? ' · salió ' + c.fechaReemplazo : '')]);
+  }
   if (c.cambioAnticipado === 'Sí') {
     filas.unshift(['Cambio anticipado', 'Reemplazo enviado ' + (c.fechaReemplazo || '') + (c.guiaReemplazo ? ', guía ' + c.guiaReemplazo : '') + '. No enviar otro.']);
   }
@@ -1203,6 +1238,7 @@ $('#c-guardar').addEventListener('click', async () => {
     const c = await run('actualizarCaso', casoActual.id, cambios);
     pintarCaso(c);
     mensaje('ok', 'Cambios guardados en ' + c.id + '.');
+    if (cambios.estado === 'Resuelto' && DESP_API) ofrecerOC(c);
     cargarBadge();
   } catch (err) { mensaje('error', 'No se guardaron los cambios: ' + (err && err.message ? err.message : err)); }
   finally { btn.disabled = false; btn.textContent = 'Guardar cambios'; }
@@ -1313,6 +1349,79 @@ $('#btn-prueba').addEventListener('click', () => {
   abrirImpresion({ id: 'GAR-0000', cliente: 'Etiqueta de prueba', modelo: 'Reflector Solar 1500W', fecha: hoyTexto(), bultos: 1 });
 });
 
+/* ---------- OCA y OC (conexión con Despachos) ---------- */
+const DESP_API = (window.TL_CONFIG && window.TL_CONFIG.DESPACHOS_API_URL) || '';
+let ocaEnCurso = '';
+async function despachosApi(body) {
+  const r = await fetch(DESP_API, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(Object.assign({ pin: SESION.pin }, body)) });
+  const j = await r.json(); if (!j.ok) throw new Error(j.error || 'error'); return j;
+}
+function ventana(html, si, no) {
+  return new Promise((resolve) => {
+    const f = document.createElement('div'); f.className = 'vmodal-fondo';
+    f.innerHTML = '<div class="vmodal" role="dialog" aria-modal="true">' + html + '<div class="bb"><button type="button" class="no">' + esc(no || 'No') + '</button><button type="button" class="si">' + esc(si || 'Sí') + '</button></div></div>';
+    document.body.appendChild(f);
+    const fin = (ok) => { const datos = {}; f.querySelectorAll('[data-k]').forEach((el) => { datos[el.dataset.k] = el.value; }); f.remove(); resolve({ ok: ok, datos: datos }); };
+    f.querySelector('.no').onclick = () => fin(false); f.querySelector('.si').onclick = () => fin(true);
+  });
+}
+async function cargarOCA(soloBadge) {
+  try {
+    const r = await fetch(DESP_API + '?action=ocaPendientes&pin=' + encodeURIComponent(SESION.pin)); const j = await r.json();
+    const l = j.ok ? j.data : [];
+    const b = $('#badge-oca'); b.textContent = l.length; b.classList.toggle('oculto', !l.length);
+    if (soloBadge) return;
+    const el = $('#lista-pendreg');
+    el.innerHTML = l.length ? '' : '<div class="aviso">No hay cambios anticipados pendientes. 👍</div>';
+    l.forEach((o) => {
+      const d = document.createElement('div'); d.className = 'oca' + (o.vencida ? ' vencida' : '');
+      d.innerHTML = '<div class="cod">' + esc(o.codigo) + (o.caso ? ' · ' + esc(o.caso) : '') + '</div>' +
+        '<div class="meta">' + esc(o.cliente || 'Cliente') + (o.telefono ? ' · ' + esc(o.telefono) : '') + ' · Vendedor: ' + esc(o.vendedor) + ' · Salió el ' + esc(o.salio) + '</div>' +
+        '<div class="dev">↩️ Debe devolver: <b>' + (o.devolver ? o.devolver.q + ' × ' + esc(o.devolver.modelo) : '—') + '</b></div>' +
+        '<div class="meta">Se le envió: ' + (o.enviado || []).map((x) => x.q + ' × ' + esc(x.p)).join(', ') + '</div>' +
+        (o.vencida ? '<span class="alerta-txt">⚠️ Han pasado ' + o.dias + ' días: avisa al vendedor.</span>' : '<div class="meta">' + o.dias + ' días desde que salió</div>') +
+        '<div class="btns">' + (o.caso ? '<button type="button" data-a="ya">Ya llegó: marcar como recibido</button><button type="button" class="sec" data-a="abrir">Abrir ' + esc(o.caso) + '</button>'
+          : '<button type="button" data-a="reg">Registrar cambio</button>') + '</div>';
+      const on = (a, fn) => { const x = d.querySelector('[data-a="' + a + '"]'); if (x) x.onclick = fn; };
+      on('reg', () => registrarDesdeOCA(o));
+      on('abrir', () => abrirCaso(o.caso));
+      on('ya', async () => {
+        const r2 = await ventana('<h2>¿Llegó el equipo con falla de ' + esc(o.codigo) + '?</h2><p>Se marcará como recibido en el caso ' + esc(o.caso) + '. Recuerda confirmar también su recepción en el caso.</p>', 'Sí, llegó', 'No');
+        if (!r2.ok) return;
+        try { await despachosApi({ action: 'vincularOCA', codigo: o.codigo, caso: o.caso }); mensaje('ok', o.codigo + ' marcado como recibido.'); cargarOCA(); }
+        catch (err) { mensaje('error', 'No se pudo marcar: ' + err.message); }
+      });
+      el.appendChild(d);
+    });
+  } catch (err) { if (!soloBadge) $('#lista-pendreg').innerHTML = '<div class="aviso">No se pudo consultar Despachos. Revisa el internet.</div>'; }
+}
+function registrarDesdeOCA(o) {
+  mostrar('registrar', 'Registrar cambio · ' + o.codigo);
+  const p = String(o.salio || '').split('/');
+  restaurarBorrador({
+    chips: { modo: 'Llegó al almacén', tipo: 'Cambio', cambioAnticipado: 'Sí' },
+    campos: { cliente: o.cliente, telefono: o.telefono, vendedor: o.vendedor, fechaReemplazo: p.length === 3 ? p[2] + '-' + p[1] + '-' + p[0] : '', guiaReemplazo: o.codigo },
+    equipos: [{ modelo: o.devolver ? o.devolver.modelo : '', cantidad: o.devolver ? o.devolver.q : 1, bultos: 1 }]
+  });
+  ocaEnCurso = o.codigo;
+  mensaje('info', 'Formulario lleno con los datos de ' + o.codigo + '. Revisa el modelo, los accesorios y la falla, y guarda.');
+}
+async function ofrecerOC(c) {
+  const r = await ventana('<h2>¿Hay que enviar un equipo al cliente?</h2><p>Si el caso ' + esc(c.id) + ' se resolvió con un reemplazo o el mismo equipo reparado, se crea una orden de cambio (OC) que aparecerá en Alistar pedidos.</p>', 'Sí, enviar', 'No');
+  if (!r.ok) return;
+  const modelos = (LISTAS.modelos || []).slice(); if (c.modelo && modelos.indexOf(c.modelo) < 0) modelos.unshift(c.modelo);
+  const r2 = await ventana('<h2>¿Qué sale para ' + esc(c.cliente || 'el cliente') + '?</h2>' +
+    '<label>Equipo</label><select data-k="modelo">' + modelos.map((m) => '<option' + (m === c.modelo ? ' selected' : '') + '>' + esc(m) + '</option>').join('') + '</select>' +
+    '<label>Cantidad</label><input data-k="q" type="tel" inputmode="numeric" value="' + esc(c.cantidad || 1) + '">' +
+    '<label>Nota para el almacén (opcional)</label><input data-k="nota" type="text" placeholder="Ej.: es el mismo equipo reparado">', 'Crear orden de cambio', 'Cancelar');
+  if (!r2.ok) return;
+  try {
+    const j = await despachosApi({ action: 'crearOC', caso: c.id, cliente: c.cliente, telefono: c.telefono, vendedor: c.vendedor,
+      productos: [{ p: r2.datos.modelo, q: r2.datos.q }], nota: r2.datos.nota, idc: 'oc-' + c.id + '-' + Date.now() });
+    mensaje('ok', (j.repetida ? 'Ya existía la orden de cambio ' : 'Se creó la orden de cambio ') + j.orden.codigo + '. El vendedor ' + (c.vendedor || '') + ' completará los datos de envío y aparecerá en Alistar pedidos.');
+  } catch (err) { mensaje('error', 'No se pudo crear la orden de cambio: ' + err.message); }
+}
+
 /* ---------- navegación ---------- */
 document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('click', () => {
   mensaje('', '');
@@ -1322,6 +1431,7 @@ document.querySelectorAll('nav.tabs button').forEach((b) => b.addEventListener('
   if (t === 'porrecibir') { mostrar('porrecibir', 'Por recibir'); cargarPorRecibir(); }
   if (t === 'pendientes') { mostrar('pendientes', 'Por imprimir'); cargarPendientes(); }
   if (t === 'buscar') { mostrar('buscar', 'Buscar caso'); buscar(); }
+  if (t === 'pendreg') { mostrar('pendreg', 'Cambios pendientes de registro'); cargarOCA(); }
 }));
 
 /* ---------- borrador automático del formulario ---------- */
